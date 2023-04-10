@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}
+<title>Creature Detail</title>
+{% endblock %}
+
+{% block content %}
+ <h1>Creature Detail</h1>
+
+ <!-- NOTE: DTL (Django Template Language) is NOT python, albeit it looks very "pythonic" -->
+
+ <div class="row">
+    <div class="col s6">
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title">{{ creature.name }}</span>
+                <p>Species: {{ creature.species }}</p>
+                <p>Description: {{ creature.description }}</p>
+                <p>Age: {{ creature.age }}</p>
+            </div>
+            <div class="card-action">
+                <a href="{% url 'creature_update' creature.id %}">Update</a>
+                <a href="{% url 'creature_delete' creature.id %}">Delete</a>
+            </div>
+        </div>
+    </div>
+     <div class ="col s6">
+        <form action="{% url 'add_feeding' creature.id %}" method="POST">
+            {% csrf_token %}
+            {{ feeding_form.as_p }}
+            <input type="submit" value="Add Feeding" class="btn blue">
+        </form>
+        <br />
+        {% if creature.fed_for_today %}
+        <div class="card-panel teal-text center-align">
+            {{ creature.name }} has been fed all meals for today!
+        </div>
+        {% else %}
+        <div class="card-panel teal-text center-align">
+            {{ creature.name }} might be hungry..
+        </div>
+        {% endif %}
+         <table class="striped">
+             <thead>
+                 <tr>
+                     <th>Date</th>
+                     <th>Meal</th>
+                 </tr>
+             </thead>
+             <tbody>
+                 {% for feeding in creature.feeding_set.all %}
+                     <tr>
+                         <td>{{ feeding.date }}</td>
+                         <td>{{ feeding.get_meal_display }}</td>
+                     </tr>
+                 {% endfor %}
+             </tbody>
+         </table>
+     </div>
+ </div>
+
+ <hr />
+
+ <div class="row">
+    <div class="col s6">
+        <h3>{{ creature.name }}'s Toys</h3>
+        {% if creature.toys.count %}
+            {% for toy in creature.toys.all %}
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">A <span class='{{toy.color.lower}}-text'> {{ toy.color.capitalize }}</span> {{ toy.name }}</span>
+                        <div class="card-action">
+                            <form action="{% url 'unassoc_toy' creature.id toy.id %}" method="POST">
+                                {% csrf_token %}
+                                <input type="submit" value="Remove" class="btn blue">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            {% else %}
+                <h5>{{creature.name}} doesn't have any toys yet 😿</h5>
+        {% endif %}
+    </div>
+    <div class="col s6">
+        <h3>Available Toys</h3>
+        {% if toys.count %}
+            {% for toy in toys %}
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">A <span class='{{toy.color.lower}}-text'> {{ toy.color.capitalize }}</span> {{ toy.name }}</span>
+                    </div>
+                    <div class="card-action">
+                        <form action="{% url 'assoc_toy' creature.id toy.id %}" method="POST">
+                            {% csrf_token %}
+                            <input type="submit" value="Add" class="btn blue">
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+            {% else %}
+                <h5>{{cat.name}} Has All Available Toys</h5>
+        {% endif %}
+    </div>
+ </div>
+
+ <script>
+    // DOM Element References
+    const datePickerEl= document.getElementById('id_date');
+    const formSelectEl= document.getElementById('id_meal');
+
+    // Materialize init for DatePicker and FormSelect
+    M.Datepicker.init(datePickerEl, {
+        format: 'yyyy-mm-dd',
+        defaultDate: new Date(),
+        setDefaultDate: true,
+        autoClose: true
+    });
+    M.FormSelect.init(formSelectEl);
+ </script>
+
+{% endblock %}

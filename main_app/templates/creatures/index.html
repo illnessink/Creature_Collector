@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}
+<title>Creature List</title>
+{% endblock %}
+
+{% block content %}
+ <h1>Creature List</h1>
+
+ <!-- NOTE: DTL (Django Template Language) is NOT python, albeit it looks very "pythonic" -->
+ {% for creature in creatures %}
+ <a href="{% url 'creature_detail' creature.id %}">
+    <div class="card">
+        <div class="card-content">
+            <span class="card-title">{{ creature.name }}</span>
+            <p>Species: {{creature.species }}</p>
+        </div>
+    </div>
+</a>
+ {% endfor %}
+
+
+{% endblock %}
