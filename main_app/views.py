@@ -2,10 +2,43 @@ from django.shortcuts import render, redirect
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views.generic import ListView, DetailView
 
-from .models import Creature, Toy
+from .models import Creature, Toy, Photo
 from .forms import FeedingForm
 
+import uuid
+import boto3
+
+S3_BASE_URL = 'https://s3.us-east-2.amazonaws.com/'
+BUCKET = 'creaturecollector'
+
+
 # Create your views here.
+
+def add_photo(request, creature_id):
+    # attempt to collect photo submission from request
+    photo_file = request.FILES.get('photo-file', None)
+    # if photo file present
+    if photo_file:
+        # setup an s3 client object - obj w/methods for working with s3
+        s3 = boto3.client('s3')
+        # create a unique name for the photo file
+        key = uuid.uuid4().hex[:6] + photo_file.name[photo_file.name.rfind('.'):]
+        # try to upload file to aws s3
+        try:
+            s3.upload_fileobj(photo_file, BUCKET, key)
+            # generate unique url for the image
+            url = f"{S3_BASE_URL}{BUCKET}/{key}"
+            # save the url as a new instance of the photo model
+            # make sure we associate the cat with the photo model instance
+            Photo.objects.create(url=url, creature_id=creature_id)
+        # if theres an error (exception)
+        except Exception as error:
+            # print error message for debugging
+            print('photo upload failed')
+            print('error')
+    # redirect to the detail page regardless if successful
+    return redirect('creature_detail', creature_id=creature_id)
+
 
 def home(request):
     return render(request, 'home.html')
