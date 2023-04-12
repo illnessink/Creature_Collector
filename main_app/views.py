@@ -1,9 +1,13 @@
 from django.shortcuts import render, redirect
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.views.generic import ListView, DetailView
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import Creature, Toy, Photo
 from .forms import FeedingForm
+from django.contrib.auth.forms import UserCreationForm
 
 import uuid
 import boto3
@@ -14,6 +18,7 @@ BUCKET = 'creaturecollector'
 
 # Create your views here.
 
+@login_required
 def add_photo(request, creature_id):
     # attempt to collect photo submission from request
     photo_file = request.FILES.get('photo-file', None)
@@ -46,10 +51,12 @@ def home(request):
 def about(request):
     return render(request, 'about.html')
 
+@login_required
 def creatures_index(request):
-    creatures = Creature.objects.all()
+    creatures = Creature.objects.filter(user=request.user)
     return render(request, 'creatures/index.html', {'creatures': creatures})
 
+@login_required
 def creature_detail(request, creature_id):
     creature = Creature.objects.get(id=creature_id)
     feeding_form = FeedingForm()
@@ -63,6 +70,7 @@ def creature_detail(request, creature_id):
         'toys': toys_creature_doesnt_have,
         })
 
+@login_required
 def add_feeding(request, creature_id):
     form = FeedingForm(request.POST)
     if form.is_valid():
@@ -71,52 +79,71 @@ def add_feeding(request, creature_id):
         new_feeding.save()
     return redirect('creature_detail', creature_id=creature_id)
 
+@login_required
 def assoc_toy(request, creature_id, toy_id):
     creature = Creature.objects.get(id=creature_id)
     creature.toys.add(toy_id)
     return redirect('creature_detail', creature_id=creature_id)
 
+@login_required
 def unassoc_toy(request, creature_id, toy_id):
     creature = Creature.objects.get(id=creature_id)
     creature.toys.remove(toy_id)
     return redirect('creature_detail', creature_id=creature_id)
 
-class CreatureCreate(CreateView):
+def signup(request):
+    error_message = ''
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('creatures_index')
+        else:
+            error_message = 'Invalid sign up - try again'
+    form = UserCreationForm()
+    return render(request, 'registration/signup.html', {'form': form, 'error': error_message})
+
+class CreatureCreate(LoginRequiredMixin, CreateView):
     model = Creature
     fields = ('name', 'species', 'description', 'age')
     template_name = 'creatures/creature_form.html'
 
-class CreatureUpdate(UpdateView):
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)
+
+class CreatureUpdate(LoginRequiredMixin, UpdateView):
     model = Creature
     fields = ('name', 'species', 'description', 'age')
     template_name = 'creatures/creature_form.html'
 
-class CreatureDelete(DeleteView):
+class CreatureDelete(LoginRequiredMixin, DeleteView):
     model = Creature
     success_url = '/creatures/'
     template_name = 'creatures/creature_confirm_delete.html'
 
 
 
-class ToyList(ListView):
+class ToyList(LoginRequiredMixin, ListView):
     model = Toy
     template_name = 'toys/toy_list.html'
 
-class ToyDetail(DetailView):
+class ToyDetail(LoginRequiredMixin, DetailView):
     model = Toy
     template_name = 'toys/toy_detail.html'
 
-class ToyCreate(CreateView):
+class ToyCreate(LoginRequiredMixin, CreateView):
     model = Toy
     fields = '__all__'
     template_name = 'toys/toy_form.html'
 
-class ToyUpdate(UpdateView):
+class ToyUpdate(LoginRequiredMixin, UpdateView):
     model = Toy
     fields = '__all__'
     template_name = 'toys/toy_form.html'
 
-class ToyDelete(DeleteView):
+class ToyDelete(LoginRequiredMixin, DeleteView):
     model = Toy
     success_url = '/toys/'
     template_name = 'toys/toy_confirm_delete.html'
